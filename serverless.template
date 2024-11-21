@@ -3,18 +3,29 @@
   "Transform": "AWS::Serverless-2016-10-31",
   "Description": "Image Events API Production Environment",
 
+  "Parameters": {
+    "Environment": {
+      "Type": "String",
+      "Default": "Production",
+      "AllowedValues": ["Development", "Staging", "Production"],
+      "Description": "The environment for this deployment"
+    }
+  },
+
   "Resources": {
     "AspNetCoreFunction": {
       "Type": "AWS::Serverless::Function",
       "Properties": {
-        "FunctionName": "image-events-api-prod",
+        "FunctionName": { "Fn::Sub": "image-events-api-${Environment}" },
         "Handler": "ImageEventsApi",
         "Runtime": "dotnet8",
         "MemorySize": 512,
         "Timeout": 30,
+        "CodeUri": "",
         "Environment": {
           "Variables": {
-            "ASPNETCORE_ENVIRONMENT": "Production"
+            "ASPNETCORE_ENVIRONMENT": { "Ref": "Environment" },
+            "KinesisStreamName": { "Ref": "EventsStream" }
           }
         },
         "Events": {
@@ -34,7 +45,19 @@
           }
         },
         "Policies": [
-          "AWSLambdaBasicExecutionRole"
+          "AWSLambdaBasicExecutionRole",
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "kinesis:PutRecord",
+                  "kinesis:PutRecords"
+                ],
+                "Resource": { "Fn::GetAtt": ["EventsStream", "Arn"] }
+              }
+            ]
+          }
         ]
       }
     },
@@ -42,11 +65,14 @@
     "ApiGatewayApi": {
       "Type": "AWS::Serverless::Api",
       "Properties": {
-        "StageName": "Prod",
+        "StageName": { "Ref": "Environment" },
         "Cors": {
-          "AllowMethods": "'*'",
-          "AllowHeaders": "'*'",
+          "AllowMethods": "'GET,POST,OPTIONS'",
+          "AllowHeaders": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
           "AllowOrigin": "'*'"
+        },
+        "Auth": {
+          "DefaultAuthorizer": "NONE"
         }
       }
     },
@@ -54,27 +80,38 @@
     "EventsStream": {
       "Type": "AWS::Kinesis::Stream",
       "Properties": {
-        "Name": "image-events-stream-prod",
+        "Name": { "Fn::Sub": "image-events-stream-${Environment}" },
         "ShardCount": 1,
-        "RetentionPeriodHours": 24
+        "RetentionPeriodHours": 24,
+        "StreamModeDetails": {
+          "StreamMode": "PROVISIONED"
+        }
       }
     },
 
     "KinesisProcessor": {
       "Type": "AWS::Serverless::Function",
       "Properties": {
-        "FunctionName": "image-events-kinesis-processor-prod",
+        "FunctionName": { "Fn::Sub": "image-events-kinesis-processor-${Environment}" },
         "Handler": "ImageEventsApi::ImageEventsApi.KinesisEventProcessor::ProcessKinesisEvents",
         "Runtime": "dotnet8",
         "MemorySize": 256,
         "Timeout": 30,
+        "CodeUri": "",
+        "Environment": {
+          "Variables": {
+            "ASPNETCORE_ENVIRONMENT": { "Ref": "Environment" },
+            "KinesisStreamName": { "Ref": "EventsStream" }
+          }
+        },
         "Events": {
           "Stream": {
             "Type": "Kinesis",
             "Properties": {
               "Stream": { "Fn::GetAtt": ["EventsStream", "Arn"] },
               "StartingPosition": "LATEST",
-              "BatchSize": 100
+              "BatchSize": 100,
+              "MaximumBatchingWindowInSeconds": 10
             }
           }
         },
@@ -103,13 +140,13 @@
     "ApiURL": {
       "Description": "API Gateway endpoint URL",
       "Value": {
-        "Fn::Sub": "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+        "Fn::Sub": "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"
       }
     },
     "SwaggerURL": {
       "Description": "Swagger UI URL",
       "Value": {
-        "Fn::Sub": "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/swagger"
+        "Fn::Sub": "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/swagger"
       }
     },
     "KinesisStreamName": {
