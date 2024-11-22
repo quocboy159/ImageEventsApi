@@ -4,7 +4,7 @@
     {
         public string ImageUrl { get; private set; }
         public string Description { get; private set; }
-        public DateTime CreatedDate { get; private set; }
+        public DateTime CreatedDate { get; private set; } = DateTime.Now;
 
         private ImageEvent(string imageUrl, string description)
         {

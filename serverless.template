@@ -1,157 +1,98 @@
 {
-  "AWSTemplateFormatVersion": "2010-09-09",
-  "Transform": "AWS::Serverless-2016-10-31",
-  "Description": "Image Events API Production Environment",
-
-  "Parameters": {
-    "Environment": {
-      "Type": "String",
-      "Default": "Production",
-      "AllowedValues": ["Development", "Staging", "Production"],
-      "Description": "The environment for this deployment"
-    }
-  },
-
-  "Resources": {
-    "AspNetCoreFunction": {
-      "Type": "AWS::Serverless::Function",
-      "Properties": {
-        "FunctionName": { "Fn::Sub": "image-events-api-${Environment}" },
-        "Handler": "ImageEventsApi",
-        "Runtime": "dotnet8",
-        "MemorySize": 512,
-        "Timeout": 30,
-        "CodeUri": "",
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Transform": "AWS::Serverless-2016-10-31",
+    "Description": "Image Events API Production Environment",
+    
+    "Parameters": {
         "Environment": {
-          "Variables": {
-            "ASPNETCORE_ENVIRONMENT": { "Ref": "Environment" },
-            "KinesisStreamName": { "Ref": "EventsStream" }
-          }
-        },
-        "Events": {
-          "ProxyResource": {
-            "Type": "Api",
-            "Properties": {
-              "Path": "/{proxy+}",
-              "Method": "ANY"
-            }
-          },
-          "RootResource": {
-            "Type": "Api",
-            "Properties": {
-              "Path": "/",
-              "Method": "ANY"
-            }
-          }
-        },
-        "Policies": [
-          "AWSLambdaBasicExecutionRole",
-          {
-            "Statement": [
-              {
-                "Effect": "Allow",
-                "Action": [
-                  "kinesis:PutRecord",
-                  "kinesis:PutRecords"
-                ],
-                "Resource": { "Fn::GetAtt": ["EventsStream", "Arn"] }
-              }
-            ]
-          }
-        ]
-      }
-    },
-
-    "ApiGatewayApi": {
-      "Type": "AWS::Serverless::Api",
-      "Properties": {
-        "StageName": { "Ref": "Environment" },
-        "Cors": {
-          "AllowMethods": "'GET,POST,OPTIONS'",
-          "AllowHeaders": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
-          "AllowOrigin": "'*'"
-        },
-        "Auth": {
-          "DefaultAuthorizer": "NONE"
+            "Type": "String",
+            "Default": "Production",
+            "AllowedValues": [
+                "Development",
+                "Staging",
+                "Production"
+            ],
+            "Description": "The environment for this deployment"
         }
-      }
     },
-
-    "EventsStream": {
-      "Type": "AWS::Kinesis::Stream",
-      "Properties": {
-        "Name": { "Fn::Sub": "image-events-stream-${Environment}" },
-        "ShardCount": 1,
-        "RetentionPeriodHours": 24,
-        "StreamModeDetails": {
-          "StreamMode": "PROVISIONED"
-        }
-      }
-    },
-
-    "KinesisProcessor": {
-      "Type": "AWS::Serverless::Function",
-      "Properties": {
-        "FunctionName": { "Fn::Sub": "image-events-kinesis-processor-${Environment}" },
-        "Handler": "ImageEventsApi::ImageEventsApi.KinesisEventProcessor::ProcessKinesisEvents",
-        "Runtime": "dotnet8",
-        "MemorySize": 256,
-        "Timeout": 30,
-        "CodeUri": "",
-        "Environment": {
-          "Variables": {
-            "ASPNETCORE_ENVIRONMENT": { "Ref": "Environment" },
-            "KinesisStreamName": { "Ref": "EventsStream" }
-          }
-        },
-        "Events": {
-          "Stream": {
-            "Type": "Kinesis",
+    
+    "Resources": {
+        "AspNetCoreFunction": {
+            "Type": "AWS::Serverless::Function",
             "Properties": {
-              "Stream": { "Fn::GetAtt": ["EventsStream", "Arn"] },
-              "StartingPosition": "LATEST",
-              "BatchSize": 100,
-              "MaximumBatchingWindowInSeconds": 10
+                "FunctionName": {
+                    "Fn::Sub": "image-events-api-${Environment}"
+                },
+                "Handler": "ImageEventsApi",
+                "Runtime": "dotnet8",
+                "MemorySize": 512,
+                "Timeout": 30,
+                "CodeUri": "s3://image-events-deployment-123/code.zip",
+                "Environment": {
+                    "Variables": {
+                        "ASPNETCORE_ENVIRONMENT": {
+                            "Ref": "Environment"
+                        }
+                    }
+                },
+                "Events": {
+                    "ProxyResource": {
+                        "Type": "Api",
+                        "Properties": {
+                            "RestApiId": {
+                                "Ref": "ApiGatewayApi"
+                            },
+                            "Path": "/{proxy+}",
+                            "Method": "ANY"
+                        }
+                    },
+                    "RootResource": {
+                        "Type": "Api",
+                        "Properties": {
+                            "RestApiId": {
+                                "Ref": "ApiGatewayApi"
+                            },
+                            "Path": "/",
+                            "Method": "ANY"
+                        }
+                    }
+                },
+                "Policies": [
+                    "AWSLambdaBasicExecutionRole"
+                ]
             }
-          }
         },
-        "Policies": [
-          "AWSLambdaBasicExecutionRole",
-          {
-            "Statement": [
-              {
-                "Effect": "Allow",
-                "Action": [
-                  "kinesis:GetRecords",
-                  "kinesis:GetShardIterator",
-                  "kinesis:DescribeStream",
-                  "kinesis:ListShards"
-                ],
-                "Resource": { "Fn::GetAtt": ["EventsStream", "Arn"] }
-              }
-            ]
-          }
-        ]
-      }
-    }
-  },
-
-  "Outputs": {
-    "ApiURL": {
-      "Description": "API Gateway endpoint URL",
-      "Value": {
-        "Fn::Sub": "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"
-      }
+        
+        "ApiGatewayApi": {
+            "Type": "AWS::Serverless::Api",
+            "Properties": {
+                "StageName": {
+                    "Ref": "Environment"
+                },
+                "Cors": {
+                    "AllowMethods": "'GET,POST,OPTIONS'",
+                    "AllowHeaders": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+                    "AllowOrigin": "'*'"
+                },
+                "Auth": {
+                    "DefaultAuthorizer": "NONE"
+                }
+            }
+        }
     },
-    "SwaggerURL": {
-      "Description": "Swagger UI URL",
-      "Value": {
-        "Fn::Sub": "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/swagger"
-      }
-    },
-    "KinesisStreamName": {
-      "Description": "Kinesis Stream Name",
-      "Value": { "Ref": "EventsStream" }
+    
+    "Outputs": {
+        "ApiURL": {
+            "Description": "API Gateway endpoint URL",
+            "Value": {
+                "Fn::Sub": "https://${ApiGatewayApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"
+            }
+        },
+        "SwaggerURL": {
+            "Description": "Swagger UI URL",
+            "Value": {
+                "Fn::Sub": "https://${ApiGatewayApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/swagger"
+            }
+        }
     }
-  }
 }
