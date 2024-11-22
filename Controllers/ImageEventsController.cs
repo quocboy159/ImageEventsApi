@@ -16,7 +16,7 @@ namespace ImageEventsApi.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         [HttpGet("latest")]
-        public Results<BadRequest<string>, Ok<IEnumerable<ImageEvent>>> GetLastImageEvents([FromQuery] int pastHours = 5)
+        public Results<BadRequest<string>, Ok<IEnumerable<ImageEvent>>> GetLastImageEvents([FromQuery] int pastHours = 1)
         {
             if(pastHours < 0)
             {
@@ -31,7 +31,7 @@ namespace ImageEventsApi.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         [HttpGet("latest/count")]
-        public Results<BadRequest<string>, Ok<int>> GetCountLastImageEvents([FromQuery] int pastHours = 5)
+        public Results<BadRequest<string>, Ok<int>> GetCountLastImageEvents([FromQuery] int pastHours = 1)
         {
             if (pastHours < 0)
             {
