@@ -14,7 +14,7 @@
     <PackageReference Include="AWSSDK.Core" Version="3.7.300.2" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
     <PackageReference Include="Amazon.Lambda.KinesisEvents" Version="2.2.0" />
-    <PackageReference Include="AWSSDK.Kinesis" Version="3.7.300.47" />
+    <PackageReference Include="AWSSDK.Kinesis" Version="3.7.300.2" />
   </ItemGroup>
 
 </Project>
