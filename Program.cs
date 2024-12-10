@@ -1,4 +1,5 @@
 using ImageEventsApi.Repositories;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,7 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddOpenApi();
 builder.Services.AddAWSLambdaHosting(LambdaEventSource.RestApi);
 
 builder.Services.AddSingleton<IImageEventService, ImageEventService>();
@@ -30,8 +31,8 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 app.UseCors();
 
-app.UseSwagger();
-app.UseSwaggerUI();
+app.MapScalarApiReference();
+app.MapOpenApi();
 
 app.MapControllers();
 
